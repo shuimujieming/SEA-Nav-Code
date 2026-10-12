@@ -84,8 +84,13 @@ class LeggedRobot(BaseTask):
         
 
     def reindex(self,tensor):
+        if self.cfg.asset.name=="Go2":
+            # print("go2")
+            return tensor[:,[3,4,5,0,1,2,9,10,11,6,7,8]]
+        else:
+            # print("lite3")
+            return tensor
         #sim2real purpose
-        return tensor[:,[3,4,5,0,1,2,9,10,11,6,7,8]]
 
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()

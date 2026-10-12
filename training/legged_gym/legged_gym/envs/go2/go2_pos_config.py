@@ -136,6 +136,7 @@ class Go2PosRoughCfg( LeggedRobotPosCfg ):
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
+        hip_scale_reduction = 1.0
 
     class asset( LeggedRobotPosCfg.asset ):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/go2_description/urdf/go2_description_v8.urdf'

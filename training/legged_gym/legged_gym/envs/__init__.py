@@ -33,7 +33,7 @@ from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 from .base.legged_robot import LeggedRobot
 from .base.legged_robot_pos import LeggedRobotPos
 from .go2.go2_pos_config import Go2PosRoughCfg, Go2PosRoughCfgPPO
-
+from .lite3.lite3_pos_config import Lite3PosRoughCfg, Lite3PosRoughCfgPPO
 import os
 
 from legged_gym.utils.task_registry import task_registry
@@ -41,3 +41,4 @@ from legged_gym.utils.task_registry import task_registry
 
 ## PPO
 task_registry.register( "go2_pos_rough", LeggedRobotPos, Go2PosRoughCfg(), Go2PosRoughCfgPPO())
+task_registry.register( "lite3", LeggedRobotPos, Lite3PosRoughCfg(), Lite3PosRoughCfgPPO())

@@ -53,7 +53,7 @@ def play(args):
     
     env_cfg.terrain.terrain_types = ['hard_room']  
     env_cfg.terrain.terrain_proportions = [1.0]
-    env_cfg.asset.file = '{LEGGED_GYM_ROOT_DIR}/resources/go2_description/urdf/go2_description.urdf'
+    # env_cfg.asset.file = '{LEGGED_GYM_ROOT_DIR}/resources/go2_description/urdf/go2_description.urdf'
     env_cfg.replay.enable_collision_replay = False
     
     env_cfg.visualization.ray_groups = {
@@ -76,7 +76,7 @@ def play(args):
     env_cfg.env.episode_length_s = 40
     env_cfg.env.stay_time = 500
     env_cfg.env.debug_viz = True
-    env_cfg.asset.terminate_after_contacts_on = [] # no termination
+    # env_cfg.asset.terminate_after_contacts_on = [] # no termination
 
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)

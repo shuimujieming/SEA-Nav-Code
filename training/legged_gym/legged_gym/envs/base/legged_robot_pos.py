@@ -130,9 +130,16 @@ class LeggedRobotPos(LeggedRobot):
         self.collision_pos_hist = torch.zeros(self.num_envs, max_col_pts, 3, device=self.device, dtype=torch.float)
         self.num_collisions = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         
-        self.slr_body = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/legged_gym/ctrl_model/body_latest.jit")
-        self.slr_encoder_vel = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/legged_gym/ctrl_model/encoder_vel.jit")
-        self.slr_encoder_latent = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/legged_gym/ctrl_model/encoder_latent.jit")
+        if self.cfg.asset.name == "Go2":
+            self.slr_body = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/legged_gym/ctrl_model/body_latest.jit", map_location=self.device)
+            self.slr_encoder_vel = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/legged_gym/ctrl_model/encoder_vel.jit", map_location=self.device)
+            self.slr_encoder_latent = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/legged_gym/ctrl_model/encoder_latent.jit", map_location=self.device)
+        else:
+            self.moe_body = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/legged_gym/ctrl_model/policy.pt", map_location=self.device)
+            # The exported history is a plain TorchScript attribute with batch size 1.
+            # It must be placed on the simulation device and sized for all environments.
+            self.moe_body.history = self.moe_body.history.new_zeros(
+                (self.num_envs, *self.moe_body.history.shape[1:]), device=self.device)
 
     def _update_replay_buffer(self):
         # Update replay buffer
@@ -173,6 +180,8 @@ class LeggedRobotPos(LeggedRobot):
             [torch.Tensor]: Torques sent to the simulation
         """
         actions_scaled = actions[:, :12] * 0.25
+        actions_scaled[:, [0, 3, 6, 9]] *= self.cfg.control.hip_scale_reduction
+
         joint_pos_target = actions_scaled + self.default_dof_pos
         torques = self.p_gains * (joint_pos_target- self.dof_pos) - self.d_gains * self.dof_vel
         torques = torques 
@@ -219,12 +228,15 @@ class LeggedRobotPos(LeggedRobot):
             ], dim=1)
         )  
         prop = self.slr_obs_buf
-        ang_vel = self.base_ang_vel[:, 2:] * scale_ang_vel
-        self.base_lin_vel_pred = self.slr_encoder_vel(self.slr_obs_hist.view(self.num_envs, -1))
-        latent = self.slr_encoder_latent(self.slr_obs_hist.view(self.num_envs, -1))
-        actor_obs = torch.cat(
-            (self.base_lin_vel_pred, prop, ang_vel, latent), dim=-1)
-        actions = self.slr_body(actor_obs)
+        if self.cfg.asset.name=="Go2":
+            ang_vel = self.base_ang_vel[:, 2:] * scale_ang_vel
+            self.base_lin_vel_pred = self.slr_encoder_vel(self.slr_obs_hist.view(self.num_envs, -1))
+            latent = self.slr_encoder_latent(self.slr_obs_hist.view(self.num_envs, -1))
+            actor_obs = torch.cat(
+                (self.base_lin_vel_pred, prop, ang_vel, latent), dim=-1)
+            actions = self.slr_body(actor_obs)
+        else:
+            actions = self.moe_body(prop)
         
         return actions
 
@@ -389,6 +401,8 @@ class LeggedRobotPos(LeggedRobot):
         self.episode_length_buf[env_ids] = 0
         self.obs_history_buf[env_ids, :, :] = 0.
         self.slr_obs_hist[env_ids, :, :] = 0.
+        if self.cfg.asset.name != "Go2":
+            self.moe_body.history[env_ids] = 0.
         self.rays_hist[env_ids, :, :] = 5.
         self.pos_hist[env_ids, :, :] = 0.
         self.goal_hist[env_ids, :, :] = 0.
