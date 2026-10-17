@@ -123,9 +123,9 @@ class Lite3PosRoughCfg( LeggedRobotPosCfg ):
         delay_time = 0.1 # [s] time delay for the command
         alpha = 0.5 # Filter coefficient: alpha*new + (1-alpha)*old
         class ranges(LeggedRobotPosCfg.commands.ranges):
-            limit_vx = [-0.5, 2.0]
-            limit_vy = [-1.0, 1.0]
-            limit_vyaw = [-1.0, 1.0]
+            limit_vx = [-0.5, 0.5]
+            limit_vy = [-0.5, 0.5]
+            limit_vyaw = [-0.8, 0.8]
 
     class control( LeggedRobotPosCfg.control ):
         # PD Drive parameters:

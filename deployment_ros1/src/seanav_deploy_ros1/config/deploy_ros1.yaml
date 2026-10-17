@@ -1,0 +1,43 @@
+# ROS1 deployment parameters for a Velodyne VLP-16.
+# All distances are meters and angles are radians unless noted otherwise.
+
+input_topic: /scan
+output_topic: /rays
+output_frame: base_link
+
+# PointCloud2 -> LaserScan should transform the cloud to base_link first.
+laser_yaw_offset_rad: 0.0
+invert_angle: false
+range_min: 0.1
+range_max: 3.0
+bin_width_deg: 6.0
+
+# VLP-16 point cloud is reduced to a horizontal 2D scan by this height slice.
+# Tune these values for the physical mounting height and robot body.
+cloud_topic: /velodyne_points
+scan_min_height: -0.35
+scan_max_height: 0.35
+
+# A-LOAM odometry parameters. A-LOAM is included by the launch file.
+odom_topic: /aft_mapped_to_init_high_frec
+skip_first_msgs: 3
+origin_settle_msgs: 30
+laser_x_in_base_m: 0.0
+laser_y_in_base_m: 0.0
+pose_x_sign: 1.0
+pose_y_sign: 1.0
+yaw_sign: 1.0
+debug_log_hz: 2.0
+min_velocity_dt: 0.001
+max_velocity_dt: 0.2
+local_frame: odom
+# Disable if another node already publishes odom -> base_link.
+publish_base_tf: true
+
+# The perception host is the TCP client. The motion host listens here and
+# sends motion_state frames while accepting nav_command frames.
+tcp_enabled: true
+motion_host: 192.168.1.102
+motion_port: 29001
+tcp_reconnect_s: 1.0
+

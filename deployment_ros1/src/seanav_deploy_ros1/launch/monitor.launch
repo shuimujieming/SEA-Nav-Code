@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="seanav_deploy_ros1" type="rays_monitor_ros1.py" name="rays_monitor" output="screen"/>
+</launch>

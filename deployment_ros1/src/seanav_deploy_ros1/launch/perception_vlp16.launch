@@ -1,0 +1,69 @@
+<launch>
+  <arg name="velodyne_points_topic" default="/velodyne_points"/>
+  <arg name="scan_topic" default="/scan"/>
+  <arg name="rays_topic" default="/rays"/>
+  <arg name="pose_topic" default="/pose"/>
+  <arg name="target_frame" default="base_link"/>
+  <arg name="config" default="$(find seanav_deploy_ros1)/config/deploy_ros1.yaml"/>
+  <arg name="min_height" default="-0.5"/>
+  <arg name="max_height" default="0.5"/>
+  <!-- Temporary placeholder extrinsics. Replace these values after measuring
+       the real VLP-16 mounting pose. Disable this arg if another node already
+       publishes base_link -> velodyne. -->
+  <arg name="publish_static_tf" default="true"/>
+  <arg name="velodyne_frame" default="velodyne"/>
+  <arg name="velodyne_x" default="0.0"/>
+  <arg name="velodyne_y" default="0.0"/>
+  <arg name="velodyne_z" default="0.0"/>
+  <arg name="velodyne_yaw" default="0.0"/>
+  <arg name="velodyne_pitch" default="0.0"/>
+  <arg name="velodyne_roll" default="0.0"/>
+
+  <!-- Standard ROS1 Velodyne driver launch. Set device_ip/model in the
+       included package's args if your VLP-16 setup needs them. -->
+  <include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch"/>
+
+  <!-- A-LOAM consumes the same /velodyne_points stream and publishes
+       /aft_mapped_to_init_high_frec for the pose adapter below. -->
+  <include file="$(find aloam_velodyne)/launch/aloam_velodyne_VLP_16.launch">
+    <arg name="rviz" value="false"/>
+  </include>
+
+  <!-- This publishes the temporary base_link -> velodyne transform. Disable
+       it when robot_state_publisher or another source supplies the same TF. -->
+  <group if="$(arg publish_static_tf)">
+    <node pkg="tf" type="static_transform_publisher" name="base_to_velodyne_static_tf"
+          args="$(arg velodyne_x) $(arg velodyne_y) $(arg velodyne_z) $(arg velodyne_yaw) $(arg velodyne_pitch) $(arg velodyne_roll) base_link $(arg velodyne_frame) 100"/>
+  </group>
+
+  <!-- Reduce the 3D cloud to a 2D scan in base_link. The height slice must be
+       calibrated from the actual VLP-16 mounting height. -->
+  <node pkg="pointcloud_to_laserscan"
+        type="pointcloud_to_laserscan_node"
+        name="cloud_to_scan"
+        output="screen">
+    <remap from="cloud_in" to="$(arg velodyne_points_topic)"/>
+    <remap from="scan" to="$(arg scan_topic)"/>
+    <param name="target_frame" value="$(arg target_frame)"/>
+    <param name="transform_tolerance" value="0.1"/>
+    <param name="min_height" value="$(arg min_height)"/>
+    <param name="max_height" value="$(arg max_height)"/>
+    <param name="angle_min" value="-3.1415926"/>
+    <param name="angle_max" value="3.1415926"/>
+    <param name="range_min" value="0.1"/>
+    <param name="range_max" value="30.0"/>
+    <param name="use_inf" value="true"/>
+  </node>
+
+  <node pkg="seanav_deploy_ros1" type="scan_to_rays_ros1.py" name="scan_to_rays" output="screen">
+    <rosparam file="$(arg config)" command="load"/>
+    <param name="input_topic" value="$(arg scan_topic)"/>
+    <param name="output_topic" value="$(arg rays_topic)"/>
+  </node>
+
+  <node pkg="seanav_deploy_ros1" type="lidar_odom_ros1.py" name="lidar_odom" output="screen">
+    <rosparam file="$(arg config)" command="load"/>
+    <param name="output_topic" value="$(arg pose_topic)"/>
+    <param name="output_odom_topic" value="/pose_odom"/>
+  </node>
+</launch>

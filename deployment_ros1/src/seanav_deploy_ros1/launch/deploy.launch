@@ -1,0 +1,64 @@
+<launch>
+  <arg name="run" default="true"/>
+  <arg name="enable_nav_interface" default="true"/>
+  <arg name="goal_x" default="1.0"/>
+  <arg name="goal_y" default="0.0"/>
+  <arg name="motion_host" default="192.168.1.102"/>
+  <arg name="motion_port" default="29001"/>
+  <!-- Policy inference runs here; the Lite3 locomotion executable runs on
+       the separate motion host. run permits sending navigation velocities. -->
+  <arg name="enable_policy" default="true"/>
+  <arg name="model_path" default="/home/shuimujieming/SEA-Nav-Code/deployment_ros1/models/model_2000.onnx"/>
+  <!-- Navigation policy exported by training play.py; CPU ONNX Runtime. -->
+  <arg name="onnx_threads" default="1"/>
+  <arg name="policy_python" default="/usr/bin/python3"/>
+  <arg name="goal_frame" default="odom"/>
+  <arg name="goal_tolerance" default="0.3"/>
+  <arg name="require_goal" default="true"/>
+
+  <include file="$(find seanav_deploy_ros1)/launch/perception_vlp16.launch"/>
+  <include file="$(find seanav_deploy_ros1)/launch/monitor.launch"/>
+
+  <group if="$(arg enable_nav_interface)">
+    <node pkg="seanav_deploy_ros1" type="sea_nav_interface_ros1.py" name="sea_nav_interface" output="screen">
+      <param name="rays_topic" value="/rays"/>
+      <param name="pose_topic" value="/pose"/>
+      <param name="odom_topic" value="/pose_odom"/>
+      <param name="motion_host" value="$(arg motion_host)"/>
+      <param name="motion_port" value="$(arg motion_port)"/>
+      <param name="nav_command_topic" value="/sea_nav/nav_command"/>
+      <param name="tcp_enabled" value="true"/>
+      <param name="goal_topic" value="/goal"/>
+      <param name="rviz_goal_topic" value="/move_base_simple/goal"/>
+      <param name="rviz_pose_topic" value="/initialpose"/>
+      <param name="goal_frame" value="$(arg goal_frame)"/>
+      <param name="require_goal" value="$(arg require_goal)"/>
+      <param name="goal_tolerance" value="$(arg goal_tolerance)"/>
+      <param name="observation_topic" value="/sea_nav/observation"/>
+      <param name="motion_state_topic" value="/sea_nav/motion_state"/>
+      <param name="goal_x" value="$(arg goal_x)"/>
+      <param name="goal_y" value="$(arg goal_y)"/>
+    </node>
+  </group>
+
+  <group if="$(arg enable_policy)">
+    <node pkg="seanav_deploy_ros1" type="sea_nav_policy_ros1.py" name="sea_nav_policy"
+          output="screen" launch-prefix="$(arg policy_python)">
+      <!-- Noetic uses Python 3.8. A matching ONNX Runtime environment can
+           reuse system ROS dependencies such as rospkg and yaml. -->
+      <env name="PYTHONPATH" value="$(env PYTHONPATH):/usr/lib/python3/dist-packages"/>
+      <param name="model_path" value="$(arg model_path)"/>
+      <param name="onnx_threads" value="$(arg onnx_threads)"/>
+      <!-- Physical command limits: vx/vy [m/s], yaw rate [rad/s]. -->
+      <rosparam param="command_min">[-0.5, -0.5, -0.8]</rosparam>
+      <rosparam param="command_max">[0.5, 0.5, 0.8]</rosparam>
+      <param name="run" value="$(arg run)"/>
+      <param name="goal_tolerance" value="$(arg goal_tolerance)"/>
+      <param name="fresh_s" value="0.25"/>
+      <param name="observation_topic" value="/sea_nav/observation"/>
+      <param name="motion_state_topic" value="/sea_nav/motion_state"/>
+      <param name="nav_command_topic" value="/sea_nav/nav_command"/>
+    </node>
+  </group>
+
+</launch>

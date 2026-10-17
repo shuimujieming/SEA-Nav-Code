@@ -1,0 +1,2 @@
+set(seanav_deploy_ros1_MESSAGE_FILES "/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/seanav_deploy_ros1/msg/Lite3State.msg;/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/seanav_deploy_ros1/msg/SeaNavObservation.msg;/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/seanav_deploy_ros1/msg/NavCommand.msg;/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/seanav_deploy_ros1/msg/JointCommand.msg")
+set(seanav_deploy_ros1_SERVICE_FILES "")

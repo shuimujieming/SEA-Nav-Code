@@ -53,6 +53,30 @@ Paper: https://arxiv.org/abs/2109.11978
     - By default the loaded policy is the last model of the last run of the experiment folder.
     - Other runs/model iteration can be selected by setting `load_run` and `checkpoint` in the train config.
 
+### Export SEA-Nav ONNX from play ###
+
+Run from the project root in the Isaac Gym training environment:
+
+```bash
+python -m pip install -r training/legged_gym/requirements-export-onnx.txt
+python training/legged_gym/legged_gym/scripts/play.py \
+  --task lite3 --load_run 10_13_19-18-35_ --checkpoint 2000 --export_onnx
+```
+
+After loading the checkpoint, play exports the complete navigation actor
+(encoder, navigation head, alpha head and CBF) and continues simulation.
+The default output is `<loaded run>/exported/model_2000.onnx`.
+Use `--onnx_output /path/to/policy.onnx` to choose another destination.
+Export uses a CPU copy of the loaded actor and validates 128 inputs against
+ONNX Runtime before saving. Deployment input/output is FP32 `[1,550] -> [1,3]`.
+The usual play command without export arguments does not export a model.
+
+Lite3 navigation command limits are `vx=[-0.5,0.5] m/s`, `vy=[-0.5,0.5] m/s`, and
+`vyaw=[-0.8,0.8] rad/s`, matching ROS1 deployment and the motion host.
+These are per-axis command limits; actual robot velocity depends on tracking.
+Existing ONNX policies use the deployment clamp immediately. To train for these
+limits, retrain or fine-tune with the updated Lite3 config and export via play.
+
 ### Adding a new environment ###
 The base environment `legged_robot` implements a rough terrain locomotion task. The corresponding cfg does not specify a robot asset (URDF/ MJCF) and no reward scales. 
 

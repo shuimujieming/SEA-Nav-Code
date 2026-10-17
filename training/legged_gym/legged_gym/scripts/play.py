@@ -35,7 +35,7 @@ import os
 import time
 import isaacgym
 from legged_gym.envs import *
-from legged_gym.utils import  get_args, export_policy_as_jit, task_registry
+from legged_gym.utils import get_args, export_policy_as_onnx, task_registry
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from collections import deque
@@ -90,6 +90,15 @@ def play(args):
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
     policy = ppo_runner.get_inference_policy(device=env.device)
     print('Loaded policy from: ', task_registry.loaded_policy_path)
+
+    if args.export_onnx or args.onnx_output:
+        checkpoint_path = task_registry.loaded_policy_path
+        output_path = args.onnx_output or os.path.join(
+            os.path.dirname(checkpoint_path), 'exported',
+            os.path.splitext(os.path.basename(checkpoint_path))[0] + '.onnx')
+        result = export_policy_as_onnx(
+            ppo_runner.alg.actor_critic, output_path, checkpoint_path=checkpoint_path)
+        print('Validated ONNX actor + CBF:', result)
 
     # ---------------------------
     # Camera Setup for Recording
