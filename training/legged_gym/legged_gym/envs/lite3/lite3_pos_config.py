@@ -48,7 +48,7 @@ class Lite3PosRoughCfg( LeggedRobotPosCfg ):
         goal_reached_time = 150
         stay_time = 150
         his_len = 10
-        num_nav_actions = 3
+        num_nav_actions = 2 # forward speed and yaw rate
         num_props = 12
         num_rays = 41
         num_goal_obs = 2 # target x,y

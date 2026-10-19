@@ -100,6 +100,11 @@ class SeaNavPolicy:
             started = time.perf_counter()
             output = self.runtime.infer(obs.observation)
             inference_ms = (time.perf_counter() - started) * 1000.0
+            if tuple(output.shape) == (1, 2):
+                # Lite3 play policies emit [vx, vyaw].  NavCommand keeps the
+                # legacy [vx, vy, vyaw] order, so insert zero lateral speed.
+                output = np.concatenate((output[:, :1], np.zeros_like(output[:, :1]),
+                                         output[:, 1:]), axis=1)
             if tuple(output.shape) != (1, 3) or not np.isfinite(output).all():
                 raise ValueError("non-finite or incorrectly shaped policy output")
             self.inference_pub.publish(Float32(data=inference_ms))

@@ -65,8 +65,11 @@ commands over TCP; it does not start the locomotion executable.
 ## ONNX CPU 推理（推荐用于仅 CPU 的感知主机）
 
 已接入 ONNX Runtime `CPUExecutionProvider`，使用 FP32、完整图优化和固定
-`[1,550] -> [1,3]` 输入输出。保留 encoder、导航头、alpha 头以及 **CBF 层**，
-部署端只加载 `.onnx` 导航模型，不需要 PyTorch、`rsl_rl` 或 Isaac Gym。
+`[1,550]` 输入。部署命令统一使用 `[vx, vy, vyaw]` 三维；Lite3 的 play
+策略原始输出 `[vx, vyaw]` 时，导出端和部署端都会在中间插入一个恒为 0 的
+`vy`，因此可以直接加载二维或三维输出的 ONNX 模型。保留 encoder、导航头、
+alpha 头以及 **CBF 层**，部署端只加载 `.onnx` 导航模型，不需要 PyTorch、
+`rsl_rl` 或 Isaac Gym。
 
 ### 1. 导出训练模型
 

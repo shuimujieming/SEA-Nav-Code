@@ -19,6 +19,9 @@ class SeaNavOnnxActor(torch.nn.Module):
         self.num_obs_one_step = actor_critic.num_obs_one_step
         self.num_props = actor_critic.num_props
         self.num_rays = actor_critic.num_rays
+        self.num_actions = actor_critic.num_actions
+        if self.num_actions not in (2, 3):
+            raise ValueError("SEA-Nav export supports only 2-D or 3-D navigation actions")
 
     def forward(self, observation):
         latest = observation[:, -self.num_obs_one_step:]
@@ -27,7 +30,13 @@ class SeaNavOnnxActor(torch.nn.Module):
         features = self.backbone(torch.cat((latest, latent), dim=-1))
         nominal = self.nav_head(features)
         alpha = torch.nn.functional.softplus(self.alpha_head(features))
-        return self.cbf_layer(nominal, torch.exp2(rays), alpha)
+        safe = self.cbf_layer(nominal, torch.exp2(rays), alpha)
+        if self.num_actions == 2:
+            # Lite3 predicts [vx, vyaw], while the deployment command contract
+            # remains [vx, vy, vyaw]. Keep the lateral command explicitly zero.
+            zero_vy = torch.zeros_like(safe[:, :1])
+            safe = torch.cat((safe[:, :1], zero_vy, safe[:, 1:]), dim=-1)
+        return safe
 
 
 def export_policy_as_onnx(actor_critic, output_path, checkpoint_path=None, samples=128):
@@ -88,8 +97,9 @@ def export_policy_as_onnx(actor_critic, output_path, checkpoint_path=None, sampl
         options.inter_op_num_threads = 1
         runtime = ort.InferenceSession(candidate, sess_options=options,
                                        providers=["CPUExecutionProvider"])
+        exported_actions = 3 if actor_critic.num_actions == 2 else actor_critic.num_actions
         if (runtime.get_inputs()[0].shape != [1, actor_critic.num_obs_hist] or
-                runtime.get_outputs()[0].shape != [1, actor_critic.num_actions]):
+                runtime.get_outputs()[0].shape != [1, exported_actions]):
             raise ValueError("Exported ONNX input/output shape does not match the policy")
         max_error = 0.0
         with torch.inference_mode():

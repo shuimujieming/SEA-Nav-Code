@@ -227,8 +227,8 @@ class PPO:
                         + 1.0 * value_loss \
                         - self.entropy_coef * (entropy_batch * valid_mask).sum() / (valid_mask.sum() + 1e-8)
                 
-                clip_mins = torch.tensor([-0.5, -0.8, -1.0], device=mu_batch.device)
-                clip_maxs = torch.tensor([1.7,  0.8,  1.0], device=mu_batch.device)
+                clip_mins = mu_batch.new_tensor([-0.5, -1.0])
+                clip_maxs = mu_batch.new_tensor([1.7,  1.0])
                 range_loss = (torch.sum((mu_batch - torch.clip(mu_batch, min=clip_mins, max=clip_maxs))**2, dim=-1) * valid_mask).sum() / (valid_mask.sum() + 1e-8)
                 
                 smooth_loss = self.compute_smoothness_loss(obs_batch, next_obs_batch)

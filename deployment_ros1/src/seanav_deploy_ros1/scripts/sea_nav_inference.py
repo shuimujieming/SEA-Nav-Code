@@ -31,10 +31,12 @@ class OnnxPolicy:
         inputs, outputs = self.session.get_inputs(), self.session.get_outputs()
         if (len(inputs) != 1 or inputs[0].shape != [1, 550] or
                 inputs[0].type != "tensor(float)" or len(outputs) != 1 or
-                outputs[0].shape != [1, 3] or outputs[0].type != "tensor(float)"):
-            raise ValueError("Expected FP32 SEA-Nav ONNX input [1,550], output [1,3]; "
+                outputs[0].shape not in ([1, 2], [1, 3]) or
+                outputs[0].type != "tensor(float)"):
+            raise ValueError("Expected FP32 SEA-Nav ONNX input [1,550], output [1,2] or [1,3]; "
                              "export with training play.py --export_onnx")
         self.input_name, self.output_name = inputs[0].name, outputs[0].name
+        self.output_dim = outputs[0].shape[1]
         self.description = "ONNX Runtime CPUExecutionProvider, threads=" + str(threads)
         sample = np.zeros((10, 55), dtype=np.float32)
         sample[:, 12:53] = math.log2(3.0)
@@ -45,7 +47,13 @@ class OnnxPolicy:
 
     def infer(self, observation):
         inputs = np.asarray(observation, dtype=np.float32).reshape(1, 550)
-        return self.session.run([self.output_name], {self.input_name: inputs})[0]
+        result = self.session.run([self.output_name], {self.input_name: inputs})[0]
+        if self.output_dim == 2:
+            # Lite3's play policy is [vx, vyaw].  ROS NavCommand retains the
+            # historical [vx, vy, vyaw] contract, so insert a zero lateral speed.
+            result = np.concatenate((result[:, :1], np.zeros_like(result[:, :1]),
+                                     result[:, 1:]), axis=1)
+        return result
 
 
 def sample_observations(count=128, seed=1):

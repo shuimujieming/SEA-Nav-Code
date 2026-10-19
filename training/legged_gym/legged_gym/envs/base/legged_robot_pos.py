@@ -100,10 +100,10 @@ class LeggedRobotPos(LeggedRobot):
                                                 step=self.cfg.sensors.ray2d.theta_step, device=self.device)
         self.rays = torch.ones(self.num_envs, self.ray_angles.shape[0], dtype=torch.float, device=self.device, requires_grad=False) * 5.0
         self.delay_rays = torch.ones(self.num_envs, self.ray_angles.shape[0], dtype=torch.float, device=self.device, requires_grad=False) * 5.0
-        self.nav_clip_min = torch.tensor([self.cfg.commands.ranges.limit_vx[0], self.cfg.commands.ranges.limit_vy[0], self.cfg.commands.ranges.limit_vyaw[0]], dtype=torch.float, device=self.device, requires_grad=False)
-        self.nav_clip_max = torch.tensor([self.cfg.commands.ranges.limit_vx[1], self.cfg.commands.ranges.limit_vy[1], self.cfg.commands.ranges.limit_vyaw[1]], dtype=torch.float, device=self.device, requires_grad=False)
-        self.nav_actions_filtered = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-        
+        self.nav_clip_min = torch.tensor([self.cfg.commands.ranges.limit_vx[0], self.cfg.commands.ranges.limit_vyaw[0]], dtype=torch.float, device=self.device, requires_grad=False)
+        self.nav_clip_max = torch.tensor([self.cfg.commands.ranges.limit_vx[1], self.cfg.commands.ranges.limit_vyaw[1]], dtype=torch.float, device=self.device, requires_grad=False)
+        self.nav_actions_filtered = torch.zeros(self.num_envs, 2, device=self.device, requires_grad=False)
+    
         self.rays_hist = torch.ones(
                 self.num_envs, self.cfg.env.his_len, self.ray_angles.shape[0], device=self.device, dtype=torch.float) * 5.0
         self.goal_hold_timer = torch.zeros(self.num_envs, device=self.device, dtype=torch.int) 
@@ -188,8 +188,9 @@ class LeggedRobotPos(LeggedRobot):
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
 
     def _compute_actions(self, nav_actions=None):
-        self.slr_commands = nav_actions
-        
+        # The locomotion policy keeps its original [vx, vy, yaw_rate] command interface.
+        self.slr_commands = torch.stack((nav_actions[:, 0], torch.zeros_like(nav_actions[:, 0]), nav_actions[:, 1]), dim=-1)
+          
         scale_lin_vel = self.cfg.loco.normalization.obs_scales.lin_vel
         scale_ang_vel = self.cfg.loco.normalization.obs_scales.ang_vel
         scale_dof_pos = self.cfg.loco.normalization.obs_scales.dof_pos

@@ -86,6 +86,15 @@ class NavigationTest(unittest.TestCase):
         self.assertEqual(node.pub.publish.call_args[0][0].vx, 0.0)
         self.assertAlmostEqual(node.preview_pub.publish.call_args[0][0].vx, 0.4)
 
+    def test_two_dimensional_policy_output_inserts_lateral_zero(self):
+        node = self.runner()
+        node.runtime.infer.return_value = np.array([[0.4, 0.1]], dtype=np.float32)
+        node.tick(None)
+        command = node.pub.publish.call_args[0][0]
+        self.assertAlmostEqual(command.vx, 0.4)
+        self.assertEqual(command.vy, 0.0)
+        self.assertAlmostEqual(command.vyaw, 0.1)
+
     def test_navigation_velocity_limits(self):
         for sign in (1, -1):
             node = self.runner()
