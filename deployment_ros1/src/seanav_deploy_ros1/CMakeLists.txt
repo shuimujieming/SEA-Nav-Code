@@ -26,6 +26,7 @@ catkin_package(CATKIN_DEPENDS message_runtime std_msgs)
 
 catkin_install_python(PROGRAMS
   scripts/scan_to_rays_ros1.py
+  scripts/cloud_to_scan_ros1.py
   scripts/lidar_odom_ros1.py
   scripts/rays_monitor_ros1.py
   scripts/sea_nav_interface_ros1.py

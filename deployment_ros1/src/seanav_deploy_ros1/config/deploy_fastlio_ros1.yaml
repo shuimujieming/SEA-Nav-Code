@@ -1,0 +1,24 @@
+# SEA-Nav adapter parameters for the bundled MID360 Fast-LIO2 launch.
+input_topic: /scan
+output_topic: /rays
+output_frame: base_link
+laser_yaw_offset_rad: 0.0
+invert_angle: false
+range_min: 0.1
+range_max: 3.0
+bin_width_deg: 6.0
+
+# Fast-LIO2 publishes the IMU body pose on /Odometry in its world frame.
+odom_topic: /Odometry
+skip_first_msgs: 3
+origin_settle_msgs: 30
+laser_x_in_base_m: 0.0
+laser_y_in_base_m: 0.0
+pose_x_sign: 1.0
+pose_y_sign: 1.0
+yaw_sign: 1.0
+debug_log_hz: 2.0
+min_velocity_dt: 0.001
+max_velocity_dt: 0.2
+local_frame: odom
+publish_base_tf: true

@@ -15,8 +15,29 @@
   <arg name="goal_frame" default="odom"/>
   <arg name="goal_tolerance" default="0.3"/>
   <arg name="require_goal" default="true"/>
+  <arg name="use_fast_lio" default="true"/>
+  <arg name="publish_lidar_tf" default="true"/>
+  <arg name="lidar_x" default="0.0"/>
+  <arg name="lidar_y" default="0.0"/>
+  <arg name="lidar_z" default="0.0"/>
+  <arg name="lidar_yaw" default="0.0"/>
+  <arg name="lidar_pitch" default="0.0"/>
+  <arg name="lidar_roll" default="0.0"/>
 
-  <include file="$(find seanav_deploy_ros1)/launch/perception_vlp16.launch"/>
+  <group if="$(arg use_fast_lio)">
+    <include file="$(find seanav_deploy_ros1)/launch/perception_mid360.launch">
+      <arg name="publish_static_tf" value="$(arg publish_lidar_tf)"/>
+      <arg name="lidar_x" value="$(arg lidar_x)"/>
+      <arg name="lidar_y" value="$(arg lidar_y)"/>
+      <arg name="lidar_z" value="$(arg lidar_z)"/>
+      <arg name="lidar_yaw" value="$(arg lidar_yaw)"/>
+      <arg name="lidar_pitch" value="$(arg lidar_pitch)"/>
+      <arg name="lidar_roll" value="$(arg lidar_roll)"/>
+    </include>
+  </group>
+  <group unless="$(arg use_fast_lio)">
+    <include file="$(find seanav_deploy_ros1)/launch/perception_vlp16.launch"/>
+  </group>
   <include file="$(find seanav_deploy_ros1)/launch/monitor.launch"/>
 
   <group if="$(arg enable_nav_interface)">

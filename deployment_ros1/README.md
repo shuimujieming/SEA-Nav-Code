@@ -1,4 +1,4 @@
-# SEA-Nav ROS1 deployment with Velodyne VLP-16
+# SEA-Nav ROS1 deployment with MID360 and Fast-LIO2
 
 This is a separate ROS1 catkin workspace. It does not modify the ROS2 package
 under `deployment/`.
@@ -6,10 +6,10 @@ under `deployment/`.
 ## Pipeline
 
 ```text
-VLP-16 -> /velodyne_points -> pointcloud_to_laserscan -> /scan
+MID360 -> /livox/lidar + /livox/imu -> Fast-LIO2
+       -> /cloud_registered_lidar -> cloud_to_scan_ros1 -> /scan
        -> scan_to_rays_ros1 -> /rays (41 distances, -120..+120 deg)
-       -> A-LOAM            -> /aft_mapped_to_init_high_frec
-       -> lidar_odom_ros1   -> /pose (Pose2D)
+       -> /Odometry -> lidar_odom_ros1 -> /pose + /pose_odom
 ```
 
 The training contract stays unchanged: 41 rays, six degrees per ray, meters
@@ -17,14 +17,19 @@ clipped to 0.1--3.0, followed by the policy's existing `log2` encoding.
 
 ## Build
 
-Install the ROS1 Velodyne and pointcloud conversion packages, then build from a
-catkin workspace:
+Install PCL and Livox SDK2 required by the bundled `livox_ros_driver2`, then
+build from this catkin workspace. The MID360 point cloud conversion node is
+included in `seanav_deploy_ros1`:
 
 ```bash
 cd deployment_ros1
 ROS_SETUP=/opt/ros/noetic/setup.bash ./build.sh
 ```
 
+`build.sh` 只构建部署所需的 `seanav_deploy_ros1`、`fast_lio`、
+`livox_ros_driver2` 和用于旧 VLP-16 启动方式的 `aloam_velodyne`。
+Fast-LIO2 工程附带的 `SC-PGO` 与现有 A-LOAM 包同名，已用
+`SC-PGO/CATKIN_IGNORE` 排除；Ego-Planner 不属于导航策略部署链路。
 本工作空间已包含 `src/A-LOAM`，无需加载外部 `aloam_ws`。
 每个新终端都要先加载 ROS，再加载本工作空间；否则生成的 Python 消息包
 `seanav_deploy_ros1.msg` 不会出现在 `PYTHONPATH` 中，并会出现
@@ -47,7 +52,7 @@ python3 -c "from seanav_deploy_ros1.msg import Lite3State, NavCommand, SeaNavObs
 ## Run
 
 ```bash
-roslaunch seanav_deploy_ros1 perception_vlp16.launch
+roslaunch seanav_deploy_ros1 perception_mid360.launch
 rosrun seanav_deploy_ros1 rays_monitor_ros1.py
 ```
 
@@ -57,10 +62,28 @@ Start perception, the navigation interface and the monitor together:
 roslaunch seanav_deploy_ros1 deploy.launch
 ```
 
-`deploy.launch` currently includes `perception_vlp16.launch` and the monitor;
+`deploy.launch` defaults to `perception_mid360.launch` and includes the monitor;
 do not launch perception a second time. The motion host runs
 `Lite3_deploy/build/rl_deploy` independently. The perception host sends navigation
 commands over TCP; it does not start the locomotion executable.
+
+MID360 的 Livox 驱动默认从
+`src/Fast-LIO2/src/livox_ros_driver2/config/MID360_config.json` 读取主机与雷达 IP；
+上电前需按实际网卡和雷达地址配置。`deploy.launch` 会同时启动驱动、
+Fast-LIO2、点云转扫描及导航节点，不需要运行 `run_fast_lio.sh`。
+此启动方式显式关闭 Fast-LIO2 的 PCD 保存。
+
+`base_link -> lidar` 静态 TF 的默认位姿全为零，仅作占位。请量测安装位姿，
+启动时设置 `lidar_x/y/z`（米）和 `lidar_yaw/pitch/roll`（弧度），例如
+`lidar_z:=0.60`；若机器人已经发布该 TF，设置 `publish_lidar_tf:=false`。
+点云经此 TF 转到 `base_link` 后再按 `min_height/max_height` 截取障碍高度；
+高度范围可单独通过 `perception_mid360.launch` 的参数调整。
+`deploy_fastlio_ros1.yaml` 中的 `laser_x_in_base_m`、`laser_y_in_base_m`
+用于把 Fast-LIO2 的 IMU body 原点换算到 `base_link`，二者不重合时应填实测偏移。
+Fast-LIO2 自身的雷达-IMU 外参在 `fast_lio/config/mid360.yaml` 中配置。
+
+旧 VLP-16/A-LOAM 链路仍可用 `deploy.launch use_fast_lio:=false` 或
+`perception_vlp16.launch` 启动。使用旧链路还需安装 Velodyne ROS 包。
 
 ## ONNX CPU 推理（推荐用于仅 CPU 的感知主机）
 
@@ -79,7 +102,7 @@ alpha 头以及 **CBF 层**，部署端只加载 `.onnx` 导航模型，不需�
 python -m pip install -r training/legged_gym/requirements-export-onnx.txt
 python training/legged_gym/legged_gym/scripts/play.py \
   --task lite3 --load_run 10_13_19-18-35_ --checkpoint 2000 \
-  --export_onnx --onnx_output deployment_ros1/models/sea_nav_model_2000.onnx
+  --export_onnx --onnx_output deployment_ros1/models/model_2000.onnx
 ```
 
 换用自己的 checkpoint 时修改 `--load_run` 和 `--checkpoint`。`play.py` 加载
@@ -104,7 +127,7 @@ source /opt/ros/noetic/setup.bash
 source deployment_ros1/devel/setup.bash
 roslaunch seanav_deploy_ros1 deploy.launch \
   enable_policy:=true run:=false \
-  model_path:=/home/shuimujieming/SEA-Nav-Code/deployment_ros1/models/sea_nav_model_2000.onnx \
+  model_path:=/home/shuimujieming/SEA-Nav-Code/deployment_ros1/models/model_2000.onnx \
   onnx_threads:=1 policy_python:=/usr/bin/python3 \
   motion_host:=192.168.1.102
 ```
@@ -130,13 +153,13 @@ ROS Noetic 一致的 Python 3.8。重新构建工作空间后使用更新的节�
 
 ### 3. 在机载 CPU 上选线程数
 
-小网络不需要占满 CPU。默认单线程，关闭 ORT 线程空转，减少与 A-LOAM 的
+小网络不需要占满 CPU。默认单线程，关闭 ORT 线程空转，减少与 Fast-LIO2 的
 资源竞争；`onnx_threads` 只控制算子内部线程数，算子之间顺序执行。
 在机载端运行下列独立测试，不需要 ROS 或 PyTorch：
 
 ```bash
 python3 deployment_ros1/src/seanav_deploy_ros1/scripts/sea_nav_inference.py \
-  --model deployment_ros1/models/sea_nav_model_2000.onnx \
+  --model deployment_ros1/models/model_2000.onnx \
   --threads 1 2 4 --iterations 1000
 ```
 
@@ -155,7 +178,7 @@ rostopic hz /sea_nav/policy_command
 | --- | --- | --- |
 | ONNX Runtime CPU | 0.055 ms | 0.057 ms |
 
-计时含 Python 列表转 FP32 输入；测试与 A-LOAM 未同时运行，不能作为机载端
+计时含 Python 列表转 FP32 输入；测试与 Fast-LIO2 未同时运行，不能作为机载端
 延迟保证。策略周期仍为训练对应的 20 ms（50 Hz），不因推理变快而提高控制频率。
 
 ## RViz 选点与 ONNX 策略推理
@@ -188,7 +211,7 @@ source /opt/ros/noetic/setup.bash
 source /home/shuimujieming/SEA-Nav-Code/deployment_ros1/devel/setup.bash
 roslaunch seanav_deploy_ros1 deploy.launch \
   enable_policy:=true run:=false \
-  model_path:=/absolute/path/to/sea_nav_model_2000.onnx \
+  model_path:=/absolute/path/to/model_2000.onnx \
   policy_python:=/usr/bin/python3 \
   motion_host:=192.168.1.102
 ```
@@ -200,11 +223,11 @@ roslaunch seanav_deploy_ros1 deploy.launch \
    (`geometry_msgs/PoseStamped`)。
 3. 也兼容 **2D Pose Estimate** 的 `/initialpose`
    (`geometry_msgs/PoseWithCovarianceStamped`)。此节点把它当作目标点，
-   不会重置 A-LOAM 定位；有其他定位程序时建议使用 2D Nav Goal。
+   不会重置 Fast-LIO2 定位；有其他定位程序时建议使用 2D Nav Goal。
 4. 当前策略只用目标的 x/y，不控制拖拽箭头的最终朝向。
 
-`lidar_odom_ros1.py` 固定启动原点后发布 `camera_init -> odom` 静态 TF
-和 `odom -> base_link` 动态 TF。RViz 也可使用 `camera_init` 选点，接口会
+`lidar_odom_ros1.py` 固定启动原点后发布 `world -> odom` 静态 TF
+和 `odom -> base_link` 动态 TF。RViz 也可使用 Fast-LIO2 的 `world` 选点，接口会
 按消息时间将目标变换到 `odom`；变换不存在时拒绝该目标，不会直接混用坐标。
 若另有节点发布 `odom -> base_link`，请在 `deploy_ros1.yaml` 设置
 `publish_base_tf: false`。非标准轴符号配置无法用普通 TF 表达，需在 `odom`
@@ -249,7 +272,9 @@ RL 为 `enabled: false, standing: true`；导航为两者 `true`。
 感知端限幅为 `vx[-0.5,0.5]`、`vy[-0.5,0.5]`、`vyaw[-0.8,0.8]`；
 `alpha=0.5` 滤波由运动主机完成，感知端不重复滤波。
 
-The standard Velodyne launch included by `perception_vlp16.launch` may need
+### VLP-16 legacy diagnostics
+
+The legacy Velodyne launch included by `perception_vlp16.launch` may need
 the VLP-16 model, device IP, and frame arguments adjusted for the installed
 Velodyne driver version. A valid TF chain is required:
 
@@ -299,16 +324,27 @@ roslaunch seanav_deploy_ros1 perception_vlp16.launch \
 Do not enable this option when the robot already publishes the same TF, since
 duplicate transforms can make the point cloud appear unstable.
 
-Before enabling motors, check:
+### MID360 validation
+
+Before enabling motors with the default MID360/Fast-LIO2 pipeline, check:
 
 ```bash
-rostopic hz /velodyne_points
+rostopic hz /livox/lidar
+rostopic hz /livox/imu
+rostopic hz /Odometry
+rostopic hz /cloud_registered_lidar
 rostopic hz /scan
 rostopic hz /rays
 rostopic echo /rays -n 1
 rostopic echo /pose -n 1
 rostopic echo /pose_odom -n 1
+rosrun tf tf_echo base_link lidar
 ```
+
+`/rays` 中前方障碍物应落在中心附近的第 20 束。MID360 是非重复扫描；
+实际场景下还需检查 `/scan` 与 `/rays` 的覆盖率和障碍高度，不能仅凭话题存在
+判断可用于避障。Fast-LIO2 里程计与扫描更新率也要满足部署端的
+`fresh_s`（默认 0.25 秒）。
 
 ## Lite3 ROS1 control contract
 
@@ -318,8 +354,8 @@ the perception host runs this ROS1 client for observations and navigation comman
 ```text
 Motion host TCP server ----motion_state----> sea_nav_interface_ros1
                                       \
-VLP-16 -> /rays ----------------------> sea_nav_interface_ros1
-A-LOAM  -> /pose + /pose_odom --------/        |
+MID360 -> /rays ----------------------> sea_nav_interface_ros1
+Fast-LIO2 -> /pose + /pose_odom ------/        |
 /goal (Pose2D) -------------------------------+--> /sea_nav/observation
                                                         |
 SEA-Nav policy runner <-- observation             policy output
@@ -339,13 +375,13 @@ log2(rays_m[41])
 goal_local_xy[2]
 ```
 
-`/pose` is the startup-local `Pose2D` used for the goal transform. A-LOAM's
-original odometry message has an empty twist, so `lidar_odom_ros1.py` computes
+`/pose` is the startup-local `Pose2D` used for the goal transform. The adapter
+computes
 body-frame linear and angular velocity by finite differences and publishes it
 as `/pose_odom` (`nav_msgs/Odometry`). Its twist is what the observation node
-uses. The z, roll, and pitch components are derived from the A-LOAM pose too;
+uses. The z, roll, and pitch components are derived from the source pose too;
 the planar `/pose` topic remains unchanged. Tune `min_velocity_dt` and
-`max_velocity_dt` if A-LOAM timestamps are irregular.
+`max_velocity_dt` if odometry timestamps are irregular.
 
 Rays are clipped to `[0.1, 3.0]` meters before `log2`. The goal is supplied in
 the same startup-local frame as `/pose` and converted to the robot body frame

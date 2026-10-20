@@ -8,5 +8,5 @@ if [ ! -f "${ROS_SETUP}" ]; then
   exit 1
 fi
 source "${ROS_SETUP}"
-catkin_make
+catkin_make -DCATKIN_WHITELIST_PACKAGES="seanav_deploy_ros1;fast_lio;livox_ros_driver2;aloam_velodyne" "$@"
 echo "[build] done; source deployment_ros1/devel/setup.bash"

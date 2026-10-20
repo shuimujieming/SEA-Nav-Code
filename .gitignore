@@ -150,5 +150,6 @@ cython_debug/
 .vscode/
 
 # Project specific
+/deployment_ros1/devel/
 logs/
 wandb/

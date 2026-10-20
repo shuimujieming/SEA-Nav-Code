@@ -91,9 +91,9 @@ endif()
 # flag project as catkin-based to distinguish if a find_package()-ed project is a catkin project
 set(aloam_velodyne_FOUND_CATKIN_PROJECT TRUE)
 
-if(NOT "/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/A-LOAM/include;/usr/include/eigen3;/usr/include/pcl-1.10;/usr/include;/usr/include/vtk-7.1;/usr/include/freetype2;/usr/include/x86_64-linux-gnu;/usr/include/ni;/usr/include/openni2 " STREQUAL " ")
+if(NOT "/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/A-LOAM/include;/usr/local/include/eigen3;/usr/include/pcl-1.10;/usr/include/eigen3;/usr/include;/usr/include/vtk-7.1;/usr/include/freetype2;/usr/include/x86_64-linux-gnu;/usr/include/ni;/usr/include/openni2 " STREQUAL " ")
   set(aloam_velodyne_INCLUDE_DIRS "")
-  set(_include_dirs "/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/A-LOAM/include;/usr/include/eigen3;/usr/include/pcl-1.10;/usr/include;/usr/include/vtk-7.1;/usr/include/freetype2;/usr/include/x86_64-linux-gnu;/usr/include/ni;/usr/include/openni2")
+  set(_include_dirs "/home/shuimujieming/SEA-Nav-Code/deployment_ros1/src/A-LOAM/include;/usr/local/include/eigen3;/usr/include/pcl-1.10;/usr/include/eigen3;/usr/include;/usr/include/vtk-7.1;/usr/include/freetype2;/usr/include/x86_64-linux-gnu;/usr/include/ni;/usr/include/openni2")
   if(NOT " " STREQUAL " ")
     set(_report "Check the issue tracker '' and consider creating a ticket if the problem has not been reported yet.")
   elseif(NOT " " STREQUAL " ")
@@ -156,7 +156,7 @@ foreach(library ${libraries})
     set(lib_path "")
     set(lib "${library}-NOTFOUND")
     # since the path where the library is found is returned we have to iterate over the paths manually
-    foreach(path /home/shuimujieming/SEA-Nav-Code/deployment_ros1/devel/lib;/home/shuimujieming/SEA-Nav-Code/deployment_ros1/devel/lib;/opt/ros/noetic/lib)
+    foreach(path /home/shuimujieming/SEA-Nav-Code/deployment_ros1/devel/lib;/opt/ros/noetic/lib)
       find_library(lib ${library}
         PATHS ${path}
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)

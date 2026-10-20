@@ -2,7 +2,7 @@
 <package format="2">
   <name>seanav_deploy_ros1</name>
   <version>0.1.0</version>
-  <description>SEA-Nav ROS1 deployment adapters for a Velodyne VLP-16.</description>
+  <description>SEA-Nav ROS1 deployment adapters for MID360 Fast-LIO2 and VLP-16 A-LOAM.</description>
   <maintainer email="seanav@todo.todo">SEA-Nav Maintainers</maintainer>
   <license>MIT</license>
 
@@ -19,8 +19,9 @@
   <depend>tf</depend>
   <depend>tf2_ros</depend>
   <depend>velodyne_pointcloud</depend>
-  <depend>pointcloud_to_laserscan</depend>
   <depend>aloam_velodyne</depend>
+  <depend>fast_lio</depend>
+  <depend>livox_ros_driver2</depend>
 
   <export>
   </export>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert A-LOAM's world-frame odometry into SEA-Nav's local ``/pose``."""
+"""Convert LiDAR odometry into SEA-Nav's startup-local pose and velocity."""
 
 import math
 
@@ -30,7 +30,7 @@ def rpy_from_quaternion(q):
 
 
 class AloamOdom:
-    """Subscribe to A-LOAM and publish a startup-relative ``Pose2D``."""
+    """Publish a startup-relative pose from A-LOAM or Fast-LIO2 odometry."""
 
     def __init__(self):
         self.odom_topic = rospy.get_param("~odom_topic", "/aft_mapped_to_init_high_frec")
@@ -60,7 +60,7 @@ class AloamOdom:
         self.pub = rospy.Publisher(self.output_topic, Pose2D, queue_size=10)
         self.odom_pub = rospy.Publisher(self.output_odom_topic, Odometry, queue_size=10)
         self.sub = rospy.Subscriber(self.odom_topic, Odometry, self.callback, queue_size=10)
-        rospy.loginfo("aloam_odom_ros1: %s -> %s and %s", self.odom_topic,
+        rospy.loginfo("lidar_odom_ros1: %s -> %s and %s", self.odom_topic,
                       self.output_topic, self.output_odom_topic)
 
     def should_log(self):
@@ -81,8 +81,7 @@ class AloamOdom:
         raw_roll, raw_pitch, raw_yaw = rpy_from_quaternion(msg.pose.pose.orientation)
         yaw = wrap_pi(self.yaw_sign * raw_yaw - self.laser_yaw_offset)
 
-        # A-LOAM's translation is the Velodyne pose in camera_init. Correct for
-        # a non-centered Velodyne mounting position to obtain base_link pose.
+        # Correct the odometry source's translation for its offset from base_link.
         c, s = math.cos(yaw), math.sin(yaw)
         offset_x = c * self.laser_x - s * self.laser_y
         offset_y = s * self.laser_x + c * self.laser_y
@@ -98,7 +97,7 @@ class AloamOdom:
                 return
             self.origin = (base_x, base_y, base_z, yaw, raw_roll, raw_pitch)
             # /pose is measured in this startup-relative frame. Publish its
-            # relationship to A-LOAM's world for RViz goal transformations.
+            # relationship to the odometry world for RViz goal transformations.
             world_frame = msg.header.frame_id.lstrip("/")
             if (world_frame and world_frame != self.local_frame and
                     self.pose_x_sign == self.pose_y_sign == self.yaw_sign == 1.0):
@@ -116,7 +115,7 @@ class AloamOdom:
             else:
                 rospy.logwarn("world-to-local TF unavailable; use RViz Fixed Frame=%s. "
                               "External-frame goals require standard axis signs.", self.local_frame)
-            rospy.loginfo("A-LOAM origin fixed: x=%.3f y=%.3f z=%.3f yaw=%.3f",
+            rospy.loginfo("lidar odometry origin fixed: x=%.3f y=%.3f z=%.3f yaw=%.3f",
                           base_x, base_y, base_z, yaw)
 
         x0, y0, z0, yaw0, roll0, pitch0 = self.origin
@@ -128,7 +127,7 @@ class AloamOdom:
         pose.theta = wrap_pi(yaw - yaw0)
         self.pub.publish(pose)
 
-        # A-LOAM's odometry message leaves twist empty. Estimate the body
+        # The source odometry may leave twist empty. Estimate the body
         # velocity from consecutive startup-relative poses. The resulting
         # twist is expressed in base_link, matching the training convention.
         stamp = msg.header.stamp if msg.header.stamp.to_sec() > 0.0 else rospy.Time.now()
@@ -179,7 +178,7 @@ class AloamOdom:
                 stamp, "base_link", self.local_frame)
 
         if self.should_log():
-            rospy.loginfo("A-LOAM pose x=%.3f y=%.3f yaw=%.3f frame=%s child=%s",
+            rospy.loginfo("lidar odometry pose x=%.3f y=%.3f yaw=%.3f frame=%s child=%s",
                           pose.x, pose.y, pose.theta,
                           msg.header.frame_id, msg.child_frame_id)
 

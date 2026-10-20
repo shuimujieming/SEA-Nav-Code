@@ -1,6 +1,6 @@
 # Navigation ONNX artifact
 
-`sea_nav_model_2000.onnx` was exported from
+`model_2000.onnx` was exported from
 `training/legged_gym/logs/Lite3_pos_rough/10_13_19-18-35_/model_2000.pt`
 with ELU activation, FP32, opset 17. It includes the complete deterministic
 SEA-Nav actor and CBF, with input `observation [1,550]` and output

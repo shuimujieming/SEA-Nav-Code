@@ -39,7 +39,7 @@ class NavigationTest(unittest.TestCase):
 
     def test_onnx_runs_without_training_dependencies(self):
         with patch.dict("sys.modules", {"torch": None, "rsl_rl": None}):
-            runtime = policy.OnnxPolicy(ROOT / "deployment_ros1/models/sea_nav_model_2000.onnx")
+            runtime = policy.OnnxPolicy(ROOT / "deployment_ros1/models/model_2000.onnx")
             inputs = np.zeros((10, 55), dtype=np.float32)
             inputs[:, 12:53] = math.log2(3.0)
             inputs[-1, -2] = 2.0

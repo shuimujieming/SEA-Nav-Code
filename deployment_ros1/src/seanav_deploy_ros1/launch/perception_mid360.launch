@@ -1,0 +1,53 @@
+<launch>
+  <arg name="config" default="$(find seanav_deploy_ros1)/config/deploy_fastlio_ros1.yaml"/>
+  <arg name="cloud_topic" default="/cloud_registered_lidar"/>
+  <arg name="scan_topic" default="/scan"/>
+  <arg name="rays_topic" default="/rays"/>
+  <arg name="pose_topic" default="/pose"/>
+  <arg name="target_frame" default="base_link"/>
+  <arg name="min_height" default="-0.35"/>
+  <arg name="max_height" default="0.35"/>
+  <arg name="publish_static_tf" default="true"/>
+  <arg name="lidar_x" default="0.0"/>
+  <arg name="lidar_y" default="0.0"/>
+  <arg name="lidar_z" default="0.0"/>
+  <arg name="lidar_yaw" default="0.0"/>
+  <arg name="lidar_pitch" default="0.0"/>
+  <arg name="lidar_roll" default="0.0"/>
+
+  <include file="$(find livox_ros_driver2)/launch/msg_MID360.launch"/>
+  <include file="$(find fast_lio)/launch/mapping_mid360.launch"/>
+  <param name="pcd_save_enable" value="false"/>
+
+  <!-- Replace these placeholder extrinsics with the measured base-to-lidar pose. -->
+  <group if="$(arg publish_static_tf)">
+    <node pkg="tf" type="static_transform_publisher" name="base_to_lidar_static_tf"
+          args="$(arg lidar_x) $(arg lidar_y) $(arg lidar_z) $(arg lidar_yaw) $(arg lidar_pitch) $(arg lidar_roll) base_link lidar 100"/>
+  </group>
+
+  <node pkg="seanav_deploy_ros1" type="cloud_to_scan_ros1.py"
+        name="cloud_to_scan" output="screen">
+    <param name="input_topic" value="$(arg cloud_topic)"/>
+    <param name="output_topic" value="$(arg scan_topic)"/>
+    <param name="target_frame" value="$(arg target_frame)"/>
+    <param name="min_height" value="$(arg min_height)"/>
+    <param name="max_height" value="$(arg max_height)"/>
+    <param name="angle_min" value="-3.1415926"/>
+    <param name="angle_max" value="3.1415926"/>
+    <param name="angle_increment_deg" value="1.0"/>
+    <param name="range_min" value="0.1"/>
+    <param name="range_max" value="30.0"/>
+  </node>
+
+  <node pkg="seanav_deploy_ros1" type="scan_to_rays_ros1.py" name="scan_to_rays" output="screen">
+    <rosparam file="$(arg config)" command="load"/>
+    <param name="input_topic" value="$(arg scan_topic)"/>
+    <param name="output_topic" value="$(arg rays_topic)"/>
+  </node>
+
+  <node pkg="seanav_deploy_ros1" type="lidar_odom_ros1.py" name="lidar_odom" output="screen">
+    <rosparam file="$(arg config)" command="load"/>
+    <param name="output_topic" value="$(arg pose_topic)"/>
+    <param name="output_odom_topic" value="/pose_odom"/>
+  </node>
+</launch>
