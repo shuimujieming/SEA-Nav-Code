@@ -71,8 +71,8 @@
       <param name="model_path" value="$(arg model_path)"/>
       <param name="onnx_threads" value="$(arg onnx_threads)"/>
       <!-- Physical command limits: vx/vy [m/s], yaw rate [rad/s]. -->
-      <rosparam param="command_min">[-0.5, -0.5, -0.8]</rosparam>
-      <rosparam param="command_max">[0.5, 0.5, 0.8]</rosparam>
+      <rosparam param="command_min">[-0.5, -0.5, -1.0]</rosparam>
+      <rosparam param="command_max">[1.0, 0.5, 1.0]</rosparam>
       <param name="run" value="$(arg run)"/>
       <param name="goal_tolerance" value="$(arg goal_tolerance)"/>
       <param name="fresh_s" value="0.25"/>

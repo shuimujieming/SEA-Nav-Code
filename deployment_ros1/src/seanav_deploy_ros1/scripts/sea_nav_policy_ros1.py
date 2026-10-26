@@ -28,8 +28,8 @@ class SeaNavPolicy:
         self.run = bool(rospy.get_param("~run", False))
         self.fresh_s = float(rospy.get_param("~fresh_s", 0.25))
         self.goal_tolerance = float(rospy.get_param("~goal_tolerance", 0.3))
-        self.command_min = rospy.get_param("~command_min", [-0.5, -0.5, -0.8])
-        self.command_max = rospy.get_param("~command_max", [0.5, 0.5, 0.8])
+        self.command_min = rospy.get_param("~command_min", [-0.5, -0.5, -1.0])
+        self.command_max = rospy.get_param("~command_max", [1.0, 0.5, 1.0])
         if (len(self.command_min) != 3 or len(self.command_max) != 3 or
                 not all(math.isfinite(float(lo)) and math.isfinite(float(hi)) and lo <= 0 <= hi
                         for lo, hi in zip(self.command_min, self.command_max))):

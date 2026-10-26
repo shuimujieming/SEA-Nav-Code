@@ -269,7 +269,7 @@ RL 为 `enabled: false, standing: true`；导航为两者 `true`。
 距离目标小于 `goal_tolerance:=0.3` 米后清除目标并等待下一次选点。
 观测/运动状态超时、无效观测、推理失败均发送禁用的零速度。
 运动主机仍有独立的 0.25 秒命令超时。速度单位为 m/s、m/s、rad/s，
-感知端限幅为 `vx[-0.5,0.5]`、`vy[-0.5,0.5]`、`vyaw[-0.8,0.8]`；
+感知端限幅为 `vx[-0.5,1.0]`、`vy[-0.5,0.5]`、`vyaw[-1.0,1.0]`；
 `alpha=0.5` 滤波由运动主机完成，感知端不重复滤波。
 
 ### VLP-16 legacy diagnostics
@@ -391,7 +391,7 @@ With `require_goal:=false`, the initial goal is `(goal_x, goal_y)`.
 
 `/sea_nav/nav_command` is `NavCommand`. Its `vx`, `vy`, and `vyaw` fields are
 physical values in m/s, m/s, and rad/s. The Lite3 training and deployment
-limits are `vx=[-0.5, 0.5]`, `vy=[-0.5, 0.5]`, and `vyaw=[-0.8, 0.8]`.
+limits are `vx=[-0.5, 1.0]`, `vy=[-0.5, 0.5]`, and `vyaw=[-1.0, 1.0]`.
 The command is the
 navigation action passed to the locomotion policy; it is not a 12-joint motor
 packet.
